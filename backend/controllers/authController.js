@@ -145,7 +145,7 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const [users] = await pool.query(
-      'SELECT CUST_ID, CUST_FNAME, CUST_LNAME, EMAIL, CUST_DRIVER_LICENSE, BIRTH_DATE FROM CUSTOMER WHERE CUST_ID = ?',
+      'SELECT CUST_ID, CUST_FNAME, CUST_LNAME, EMAIL, CUST_DRIVER_LICENSE, BIRTH_DATE, CREATED_AT FROM CUSTOMER WHERE CUST_ID = ?',
       [req.user.userId]
     );
 
@@ -155,16 +155,27 @@ const getProfile = async (req, res) => {
 
     const user = users[0];
     res.json({
-      id: user.CUST_ID,
       firstName: user.CUST_FNAME,
       lastName: user.CUST_LNAME,
       email: user.EMAIL,
       driverLicense: user.CUST_DRIVER_LICENSE,
-      birthDate: user.BIRTH_DATE
+      birthDate: user.BIRTH_DATE,
+      memberSince: user.CREATED_AT
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const initializeSpots = async () => {
+  // Get all block spots and set them to 'Available'
+  const [spots] = await pool.execute('SELECT BLOCK_SPOT_ID FROM BLOCK_SPOT');
+  for (const spot of spots) {
+    await pool.execute(
+      'UPDATE BLOCK_SPOT SET STATUS = ? WHERE BLOCK_SPOT_ID = ?',
+      ['Available', spot.BLOCK_SPOT_ID]
+    );
   }
 };
 

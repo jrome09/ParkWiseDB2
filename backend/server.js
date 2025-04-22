@@ -15,16 +15,21 @@ app.get('/test', (req, res) => {
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const vehicleRoutes = require('./routes/vehicles');
+const parkingRoutes = require('./routes/parking');
+const { setupParkingSystem } = require('./controllers/parkingController');
+
+// Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/vehicles', vehicleRoutes);
+app.use('/api/parking', parkingRoutes);
 
 // Optional routes - will be implemented later
 try {
   const reservationRoutes = require('./routes/reservations');
-  const vehicleRoutes = require('./routes/vehicles');
   const paymentRoutes = require('./routes/payments');
 
   app.use('/api/reservations', reservationRoutes);
-  app.use('/api/vehicles', vehicleRoutes);
   app.use('/api/payments', paymentRoutes);
 } catch (error) {
   console.log('Some routes are not yet implemented:', error.message);
@@ -44,6 +49,9 @@ const PORT = process.env.PORT || 5000;
 // Start server
 const startServer = async () => {
   try {
+    // Initialize parking system
+    await setupParkingSystem();
+    
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
       console.log('Test the server by visiting:');

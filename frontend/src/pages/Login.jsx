@@ -72,26 +72,26 @@ const Login = () => {
       password: formData.password
     };
     
-    console.log('Attempting login with:', {
-      email: loginData.email,
-      passwordLength: loginData.password.length
-    });
-    
     try {
       const response = await axios.post(`${API_BASE_URL}/api/auth/login`, loginData);
-      console.log('Login response:', {
-        status: response.status,
-        hasToken: !!response.data.token,
-        hasUser: !!response.data.user
-      });
       
-      if (response.data.token) {
+      if (response.data && response.data.token) {
+        // Store only the token without Bearer prefix
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Log successful storage
+        console.log('Token stored:', response.data.token);
+        console.log('User data stored:', response.data.user);
+        
+        // Show welcome message
+        const welcomeMessage = `Welcome back, ${response.data.user.firstName}!`;
+        localStorage.setItem('welcomeMessage', welcomeMessage);
+        
         navigate('/dashboard');
       } else {
         console.error('Login response missing token:', response.data);
-        setLoginError('Invalid credentials');
+        setLoginError('Invalid login response from server');
       }
     } catch (error) {
       console.error('Login error details:', {
@@ -100,8 +100,10 @@ const Login = () => {
         status: error.response?.status
       });
       
-      if (error.response && error.response.data) {
-        setLoginError(error.response.data.message || 'Invalid credentials');
+      if (error.response?.status === 401) {
+        setLoginError('Invalid email or password');
+      } else if (error.response && error.response.data) {
+        setLoginError(error.response.data.message || 'Login failed');
       } else {
         setLoginError('Network error. Please try again later.');
       }

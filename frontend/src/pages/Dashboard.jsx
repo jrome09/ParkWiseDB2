@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Container, Grid, Paper, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Container, Grid, Paper, Typography, Alert } from '@mui/material';
 import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -25,6 +25,17 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
+  const [welcomeMessage, setWelcomeMessage] = useState('');
+
+  useEffect(() => {
+    const message = localStorage.getItem('welcomeMessage');
+    if (message) {
+      setWelcomeMessage(message);
+      // Remove the message after displaying it
+      localStorage.removeItem('welcomeMessage');
+    }
+  }, []);
+
   const lineChartData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     datasets: [
@@ -59,6 +70,15 @@ const Dashboard = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {welcomeMessage && (
+        <Alert 
+          severity="success" 
+          sx={{ mb: 3 }}
+          onClose={() => setWelcomeMessage('')}
+        >
+          {welcomeMessage}
+        </Alert>
+      )}
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Typography variant="h4" component="h1" gutterBottom>

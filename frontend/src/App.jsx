@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   CssBaseline,
@@ -24,6 +24,7 @@ import {
   Person as PersonIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
+import axios from 'axios';
 
 // Import pages
 import Login from './pages/Login';
@@ -45,9 +46,13 @@ const ProtectedLayout = ({ children }) => {
   };
 
   const handleLogout = () => {
+    // Clear all user-related data from localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/login');
+    localStorage.removeItem('welcomeMessage');
+    
+    // Force reload the page to clear any cached states
+    window.location.href = '/login';
   };
 
   const drawer = (
@@ -75,7 +80,7 @@ const ProtectedLayout = ({ children }) => {
           <ListItemIcon>
             <PaymentIcon />
           </ListItemIcon>
-          <ListItemText primary="Payment" />
+          <ListItemText primary="Management" />
         </ListItem>
         <ListItem button component={Link} to="/profile">
           <ListItemIcon>
@@ -181,6 +186,55 @@ const ProtectedLayout = ({ children }) => {
   );
 };
 
+// Protected Route Component
+const PrivateRoute = ({ children }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setIsAuthenticated(false);
+        navigate('/login', { state: { from: location }, replace: true });
+        return;
+      }
+
+      try {
+        // Validate token by making a request to the profile endpoint
+        const response = await axios.get('http://localhost:5000/api/auth/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data) {
+          setIsAuthenticated(true);
+        } else {
+          throw new Error('Invalid response');
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsAuthenticated(false);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('welcomeMessage');
+        navigate('/login', { state: { from: location }, replace: true });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate, location]);
+
+  if (isLoading) {
+    return null; // or a loading spinner
+  }
+
+  return isAuthenticated ? <ProtectedLayout>{children}</ProtectedLayout> : null;
+};
+
 function App() {
   return (
     <Router>
@@ -195,41 +249,36 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedLayout>
+            <PrivateRoute>
               <Dashboard />
-            </ProtectedLayout>
+            </PrivateRoute>
           }
         />
         <Route
           path="/reservations"
           element={
-            <ProtectedLayout>
+            <PrivateRoute>
               <Reservations />
-            </ProtectedLayout>
+            </PrivateRoute>
           }
         />
         <Route
           path="/payment"
           element={
-            <ProtectedLayout>
+            <PrivateRoute>
               <Payment />
-            </ProtectedLayout>
+            </PrivateRoute>
           }
         />
         <Route
           path="/profile"
           element={
-            <ProtectedLayout>
+            <PrivateRoute>
               <Profile />
-            </ProtectedLayout>
+            </PrivateRoute>
           }
         />
-        <Route
-          path="*"
-          element={
-            <Navigate to="/dashboard" replace />
-          }
-        />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );
