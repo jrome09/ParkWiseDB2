@@ -1,7 +1,21 @@
 // Login.jsx - Front-end component with improved validation and error handling
 import React, { useState } from 'react';
-import axios from 'axios';
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Container,
+  Paper,
+  FormControlLabel,
+  Checkbox,
+  Link as MuiLink,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
+import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import '../styles/Login.css';
 // Import your logo - make sure the path is correct
 import parkwiseLogo from '../assets/parkwise-logo.png';
@@ -16,6 +30,7 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [loginError, setLoginError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   
   const navigate = useNavigate();
 
@@ -61,40 +76,55 @@ const Login = () => {
     e.preventDefault();
     
     if (!validateForm()) {
+      setIsLoading(false);
       return;
     }
     
     setIsLoading(true);
     setLoginError('');
-    
-    const loginData = {
-      email: formData.email.trim().toLowerCase(),
-      password: formData.password
-    };
-    
+
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, loginData);
+      console.log('Attempting login with:', { email: formData.email });
       
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+        email: formData.email.toLowerCase(),
+        password: formData.password
+      });
+      
+      console.log('Login response:', {
+        success: !!response.data,
+        hasToken: !!response.data?.token,
+        hasUser: !!response.data?.user
+      });
+
       if (response.data && response.data.token) {
-        // Store only the token without Bearer prefix
+        // Store token and user data
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         
-        // Log successful storage
-        console.log('Token stored:', response.data.token);
-        console.log('User data stored:', response.data.user);
-        
-        // Show welcome message
+        // Log storage confirmation
+        console.log('Data stored in localStorage:', {
+          token: !!localStorage.getItem('token'),
+          user: !!localStorage.getItem('user'),
+          tokenValue: localStorage.getItem('token').substring(0, 10) + '...',
+          userData: JSON.parse(localStorage.getItem('user'))
+        });
+
+        // Store welcome message
         const welcomeMessage = `Welcome back, ${response.data.user.firstName}!`;
         localStorage.setItem('welcomeMessage', welcomeMessage);
         
-        navigate('/dashboard');
+        // Add a small delay to ensure storage is complete
+        setTimeout(() => {
+          // Force a complete page reload while navigating
+          navigate('/dashboard');
+        }, 100);
       } else {
-        console.error('Login response missing token:', response.data);
+        console.error('Invalid login response:', response.data);
         setLoginError('Invalid login response from server');
       }
     } catch (error) {
-      console.error('Login error details:', {
+      console.error('Login error:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status
@@ -113,69 +143,159 @@ const Login = () => {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-box">
-        <div className="login-header">
-          <img src={parkwiseLogo} alt="Parkwise Logo" />
-        </div>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: 'background.default',
+        py: 4,
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={2}
+          sx={{
+            p: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            borderRadius: 2,
+          }}
+        >
+          <Box
+            component="img"
+            src={parkwiseLogo}
+            alt="Parkwise Logo"
+            sx={{
+              width: 120,
+              height: 120,
+              mb: 2,
+            }}
+          />
+          
+          <Typography
+            component="h1"
+            variant="h4"
+            sx={{
+              mb: 1,
+              fontWeight: 700,
+              background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Welcome Back
+          </Typography>
+          
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ mb: 4 }}
+          >
+            Please sign in to continue
+          </Typography>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Username:</label>
-            <input
-              type="email"
+          {loginError && (
+            <Alert severity="error" sx={{ width: '100%', mb: 3 }}>
+              {loginError}
+            </Alert>
+          )}
+
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            <TextField
+              fullWidth
+              label="Email Address"
               name="email"
+              type="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="Enter your email"
-              required
-              className={errors.email ? 'input-error' : ''}
+              error={Boolean(errors.email)}
+              helperText={errors.email}
+              sx={{ mb: 2 }}
             />
-            {errors.email && <span className="error">{errors.email}</span>}
-          </div>
-          
-          <div className="form-group">
-            <label>Password:</label>
-            <input
-              type="password"
+            
+            <TextField
+              fullWidth
+              label="Password"
               name="password"
+              type="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Enter your password"
-              required
-              className={errors.password ? 'input-error' : ''}
+              error={Boolean(errors.password)}
+              helperText={errors.password}
+              sx={{ mb: 3 }}
             />
-            {errors.password && <span className="error">{errors.password}</span>}
-          </div>
-          
-          <div className="form-options">
-            <label className="remember-me">
-              <input type="checkbox" />
-              <span>Remember me</span>
-            </label>
-            <a href="/forgot-password" className="forgot-password">
-              Forgot Password?
-            </a>
-          </div>
-          
-          {loginError && (
-            <div className="error-message">{loginError}</div>
-          )}
-          
-          <button 
-            type="submit" 
-            className={`login-button ${isLoading ? 'loading' : ''}`}
-            disabled={isLoading}
-          >
-            {isLoading ? '' : 'Log In'}
-          </button>
-          
-          <div className="signup-link">
-            Don't have an account? <a href="/register">Sign up</a>
-          </div>
-        </form>
-      </div>
-    </div>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="Remember me"
+              />
+              <MuiLink
+                component={Link}
+                to="/forgot-password"
+                variant="body2"
+                sx={{ textDecoration: 'none' }}
+              >
+                Forgot password?
+              </MuiLink>
+            </Box>
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              size="large"
+              disabled={isLoading}
+              sx={{
+                py: 1.5,
+                mb: 3,
+                position: 'relative',
+              }}
+            >
+              {isLoading ? (
+                <CircularProgress
+                  size={24}
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    marginTop: '-12px',
+                    marginLeft: '-12px',
+                  }}
+                />
+              ) : (
+                'Sign In'
+              )}
+            </Button>
+
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Don't have an account?{' '}
+                <MuiLink
+                  component={Link}
+                  to="/register"
+                  sx={{
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Sign up
+                </MuiLink>
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 

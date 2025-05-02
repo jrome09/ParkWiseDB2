@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
 import {
   Box,
   CssBaseline,
@@ -15,24 +16,27 @@ import {
   ListItemText,
   Container,
   Button,
+  CircularProgress,
+  ListItemButton,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   CalendarToday as CalendarIcon,
-  Payment as PaymentIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
+  ManageAccounts as ManageIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
+import theme from './theme';
 
 // Import pages
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Reservations from './pages/Reservations';
-import Payment from './pages/Payment';
 import Profile from './pages/Profile';
+import Management from './pages/Management';
 
 const drawerWidth = 240;
 
@@ -40,8 +44,9 @@ const drawerWidth = 240;
 const ProtectedLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleDrawerToggle = () => {
+  const handleDrawerToggle = () => { 
     setMobileOpen(!mobileOpen);
   };
 
@@ -55,60 +60,167 @@ const ProtectedLayout = ({ children }) => {
     window.location.href = '/login';
   };
 
+  const getPageTitle = () => {
+    const path = location.pathname.substring(1);
+    return path.charAt(0).toUpperCase() + path.slice(1);
+  };
+
   const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Toolbar sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: '20px 16px'
+      }}>
+        <Typography variant="h5" component="div" sx={{ 
+          fontWeight: 700,
+          background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
           Parkwise
         </Typography>
       </Toolbar>
       <Divider />
-      <List>
-        <ListItem button component={Link} to="/dashboard">
-          <ListItemIcon>
-            <DashboardIcon />
-          </ListItemIcon>
-          <ListItemText primary="Dashboard" />
+      <List sx={{ flexGrow: 1, py: 2 }}>
+        <ListItem disablePadding>
+          <ListItemButton
+            component={Link}
+            to="/dashboard"
+            selected={location.pathname === '/dashboard'}
+            sx={{
+              py: 1.5,
+              mx: 1,
+              borderRadius: 1,
+              '&.Mui-selected': {
+                backgroundColor: 'primary.light',
+                color: 'primary.contrastText',
+                '& .MuiListItemIcon-root': {
+                  color: 'primary.contrastText',
+                },
+              },
+            }}
+          >
+            <ListItemIcon>
+              <DashboardIcon />
+            </ListItemIcon>
+            <ListItemText primary="Dashboard" />
+          </ListItemButton>
         </ListItem>
-        <ListItem button component={Link} to="/reservations">
-          <ListItemIcon>
-            <CalendarIcon />
-          </ListItemIcon>
-          <ListItemText primary="Reservations" />
+        <ListItem disablePadding>
+          <ListItemButton
+            component={Link}
+            to="/reservations"
+            selected={location.pathname === '/reservations'}
+            sx={{
+              py: 1.5,
+              mx: 1,
+              borderRadius: 1,
+              '&.Mui-selected': {
+                backgroundColor: 'primary.light',
+                color: 'primary.contrastText',
+                '& .MuiListItemIcon-root': {
+                  color: 'primary.contrastText',
+                },
+              },
+            }}
+          >
+            <ListItemIcon>
+              <CalendarIcon />
+            </ListItemIcon>
+            <ListItemText primary="Reservations" />
+          </ListItemButton>
         </ListItem>
-        <ListItem button component={Link} to="/payment">
-          <ListItemIcon>
-            <PaymentIcon />
-          </ListItemIcon>
-          <ListItemText primary="Management" />
+        <ListItem disablePadding>
+          <ListItemButton
+            component={Link}
+            to="/management"
+            selected={location.pathname === '/management'}
+            sx={{
+              py: 1.5,
+              mx: 1,
+              borderRadius: 1,
+              '&.Mui-selected': {
+                backgroundColor: 'primary.light',
+                color: 'primary.contrastText',
+                '& .MuiListItemIcon-root': {
+                  color: 'primary.contrastText',
+                },
+              },
+            }}
+          >
+            <ListItemIcon>
+              <ManageIcon />
+            </ListItemIcon>
+            <ListItemText primary="Management" />
+          </ListItemButton>
         </ListItem>
-        <ListItem button component={Link} to="/profile">
-          <ListItemIcon>
-            <PersonIcon />
-          </ListItemIcon>
-          <ListItemText primary="Profile" />
+        <ListItem disablePadding>
+          <ListItemButton
+            component={Link}
+            to="/profile"
+            selected={location.pathname === '/profile'}
+            sx={{
+              py: 1.5,
+              mx: 1,
+              borderRadius: 1,
+              '&.Mui-selected': {
+                backgroundColor: 'primary.light',
+                color: 'primary.contrastText',
+                '& .MuiListItemIcon-root': {
+                  color: 'primary.contrastText',
+                },
+              },
+            }}
+          >
+            <ListItemIcon>
+              <PersonIcon />
+            </ListItemIcon>
+            <ListItemText primary="Profile" />
+          </ListItemButton>
         </ListItem>
       </List>
       <Divider />
-      <List>
-        <ListItem button onClick={handleLogout}>
-          <ListItemIcon>
-            <LogoutIcon />
-          </ListItemIcon>
-          <ListItemText primary="Logout" />
+      <List sx={{ py: 1 }}>
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={handleLogout}
+            sx={{
+              py: 1.5,
+              mx: 1,
+              borderRadius: 1,
+              color: 'error.main',
+              '&:hover': {
+                backgroundColor: 'error.lighter',
+              },
+            }}
+          >
+            <ListItemIcon sx={{ color: 'error.main' }}>
+              <LogoutIcon />
+            </ListItemIcon>
+            <ListItemText primary="Logout" />
+          </ListItemButton>
         </ListItem>
       </List>
-    </div>
+    </Box>
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBar
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <CssBaseline />
+      <AppBar 
         position="fixed"
-        sx={{
+        sx={{ 
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
+          bgcolor: 'background.paper',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          boxShadow: 'none',
         }}
+        elevation={0}
       >
         <Toolbar>
           <IconButton
@@ -116,20 +228,22 @@ const ProtectedLayout = ({ children }) => {
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ mr: 2, display: { sm: 'none' }, color: 'text.primary' }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Parkwise
-          </Typography>
-          <Button
-            color="inherit"
-            startIcon={<LogoutIcon />}
-            onClick={handleLogout}
+          <Typography 
+            variant="h5" 
+            noWrap
+            component="h1" 
+            sx={{ 
+              flexGrow: 1,
+              color: 'text.primary',
+              fontWeight: 600
+            }}
           >
-            Logout
-          </Button>
+            {getPageTitle()}
+          </Typography>
         </Toolbar>
       </AppBar>
 
@@ -149,6 +263,7 @@ const ProtectedLayout = ({ children }) => {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+              bgcolor: 'background.paper',
             },
           }}
         >
@@ -161,6 +276,9 @@ const ProtectedLayout = ({ children }) => {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+              bgcolor: 'background.paper',
+              borderRight: '1px solid',
+              borderColor: 'divider',
             },
           }}
           open
@@ -173,14 +291,18 @@ const ProtectedLayout = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: 0,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         <Toolbar />
-        <Container>
+        <Box sx={{ p: 3, flexGrow: 1 }}>
           {children}
-        </Container>
+        </Box>
       </Box>
     </Box>
   );
@@ -196,31 +318,72 @@ const PrivateRoute = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      if (!token) {
+      const user = localStorage.getItem('user');
+      
+      console.log('Checking authentication:', {
+        hasToken: !!token,
+        hasUser: !!user,
+        currentPath: location.pathname,
+        tokenValue: token ? token.substring(0, 10) + '...' : null,
+        userData: user ? JSON.parse(user) : null
+      });
+
+      if (!token || !user) {
+        console.log('Missing token or user data, redirecting to login');
         setIsAuthenticated(false);
-        navigate('/login', { state: { from: location }, replace: true });
+        navigate('/login', { 
+          state: { 
+            from: location,
+            error: !token ? 'Please login to continue' : 'User data missing'
+          }, 
+          replace: true 
+        });
+        setIsLoading(false);
         return;
       }
 
       try {
-        // Validate token by making a request to the profile endpoint
+        console.log('Validating token with backend...');
         const response = await axios.get('http://localhost:5000/api/auth/profile', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('Token validation response:', {
+          success: !!response.data,
+          userData: response.data,
+          status: response.status
         });
         
         if (response.data) {
+          console.log('Token validated successfully');
           setIsAuthenticated(true);
+          setIsLoading(false);
         } else {
-          throw new Error('Invalid response');
+          throw new Error('Invalid response from server');
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('Auth check failed:', {
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          stack: error.stack
+        });
+        
         setIsAuthenticated(false);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('welcomeMessage');
-        navigate('/login', { state: { from: location }, replace: true });
-      } finally {
+        
+        navigate('/login', { 
+          state: { 
+            from: location, 
+            error: error.response?.data?.message || 'Session expired. Please login again.'
+          }, 
+          replace: true 
+        });
         setIsLoading(false);
       }
     };
@@ -229,7 +392,11 @@ const PrivateRoute = ({ children }) => {
   }, [navigate, location]);
 
   if (isLoading) {
-    return null; // or a loading spinner
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return isAuthenticated ? <ProtectedLayout>{children}</ProtectedLayout> : null;
@@ -237,50 +404,24 @@ const PrivateRoute = ({ children }) => {
 
 function App() {
   return (
-    <Router>
-      <CssBaseline />
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+    <ThemeProvider theme={theme}>
+      <Router>
+        <CssBaseline />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Protected Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/reservations"
-          element={
-            <PrivateRoute>
-              <Reservations />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/payment"
-          element={
-            <PrivateRoute>
-              <Payment />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Router>
+          {/* Protected Routes */}
+          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/reservations" element={<PrivateRoute><Reservations /></PrivateRoute>} />
+          <Route path="/management" element={<PrivateRoute><Management /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 

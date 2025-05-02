@@ -1,0 +1,14 @@
+/* Global styles */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f5f5f5 !important;
+}
+
+.MuiBox-root {
+  background-color: #f5f5f5 !important;
+}
+
+.MuiContainer-root {
+  background-color: transparent !important;
+} 

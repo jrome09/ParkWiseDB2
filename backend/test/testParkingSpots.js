@@ -28,3 +28,18 @@ async function testGetParkingSpots() {
 }
 
 testGetParkingSpots().catch(console.error); 
+
+const response = await fetch('/api/vehicles/types');
+const vehicleTypes = await response.json();
+// Use these types in a dropdown menu 
+
+await fetch('/api/vehicles', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    plateNumber: 'ABC1234',
+    typeId: selectedTypeId
+  })
+}); 

@@ -10,6 +10,7 @@ import {
   DialogTitle,
   FormControl,
   Grid,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -22,6 +23,7 @@ import {
   TableRow,
   TextField,
   Typography,
+  Chip,
 } from "@mui/material";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
@@ -34,7 +36,114 @@ const SUCCEEDING_RATE = 10;
 const getCurrentDateTime = () => {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  // Round to nearest 15 minutes
+  now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15);
   return now.toISOString().slice(0, 16);
+};
+
+// Helper function to format date for display
+const formatDateTime = (dateString) => {
+  return new Date(dateString).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
+// Helper function to format date only
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
+
+// Helper function to format duration
+const formatDuration = (hours) => {
+  const wholeHours = Math.floor(hours);
+  const minutes = Math.round((hours - wholeHours) * 60);
+  return `${wholeHours}h ${minutes}m`;
+};
+
+// Helper function to convert time to 12-hour format for display
+const to12HourTime = (timeString) => {
+  const [hours, minutes] = timeString.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${String(hour12).padStart(2, '0')}:${minutes} ${ampm}`;
+};
+
+// Helper function to convert time to 24-hour format for backend
+const to24HourTime = (timeString) => {
+  const [time, period] = timeString.split(' ');
+  let [hours, minutes] = time.split(':');
+  hours = parseInt(hours);
+  
+  // Correctly handle AM/PM conversion
+  if (period === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (period === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  
+  return `${String(hours).padStart(2, '0')}:${minutes}`;
+};
+
+// Helper function to ensure consistent date-time format
+const formatToISO = (date, timeString) => {
+  // Parse the time components
+  const [hours, minutes] = timeString.split(':').map(num => parseInt(num, 10));
+  const [year, month, day] = date.split('-').map(num => parseInt(num, 10));
+  
+  // Create date object with correct timezone handling
+  const dateObj = new Date(year, month - 1, day, hours, minutes);
+  return dateObj.toISOString();
+};
+
+// Helper function to convert time input to 24-hour format
+const handleTimeInput = (date, inputTime) => {
+  // Create a new date object for the selected date
+  const [year, month, day] = date.split('-');
+  const [hours, minutes] = inputTime.split(':');
+  
+  // Create the date object with the input time
+  const dateTime = new Date(year, month - 1, day, parseInt(hours), parseInt(minutes));
+  
+  // Format hours and minutes to ensure proper padding
+  const formattedHours = String(dateTime.getHours()).padStart(2, '0');
+  const formattedMinutes = String(dateTime.getMinutes()).padStart(2, '0');
+  
+  return `${date}T${formattedHours}:${formattedMinutes}`;
+};
+
+// Helper function to validate time range
+const validateTimeRange = (startTime, endTime) => {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  
+  // Check if times are on the same day
+  const sameDay = start.toDateString() === end.toDateString();
+  if (!sameDay) {
+    return "Reservation must start and end on the same day";
+  }
+
+  // Check if end time is after start time
+  if (end <= start) {
+    return "End time must be after start time";
+  }
+
+  // Check if the time is not in the past
+  const now = new Date();
+  if (start < now) {
+    return "Cannot make reservations in the past";
+  }
+
+  return null; // No error
 };
 
 const Reservations = () => {
@@ -54,7 +163,7 @@ const Reservations = () => {
     blockSpotId: "",
     paymentId: 1,
     vehiclePlate: "",
-    type: "Car",
+    type: "",
   });
   const [parkingFee, setParkingFee] = useState({
     initialRate: INITIAL_RATE,
@@ -73,7 +182,7 @@ const Reservations = () => {
           return;
         }
         const response = await axios.get(
-          "http://localhost:5000/api/vehicles/user",
+          "http://localhost:5000/api/vehicles",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -156,9 +265,14 @@ const Reservations = () => {
       );
 
       if (response.data) {
-        console.log("Spots received:", response.data);
-        setSpots(response.data);
-        if (response.data.length === 0) {
+        // If response.data.spots exists, use it; otherwise, use response.data directly
+        const spotsArray = Array.isArray(response.data.spots)
+          ? response.data.spots
+          : Array.isArray(response.data)
+            ? response.data
+            : [];
+        setSpots(spotsArray);
+        if (spotsArray.length === 0) {
           setError("No parking spots found for the selected criteria.");
         }
       }
@@ -210,12 +324,13 @@ const Reservations = () => {
   const handleSpotClick = (spot) => {
     if (spot.STATUS === "Available") {
       setSelectedSpot(spot);
+      const currentDateTime = getCurrentDateTime();
       setReservationForm((prev) => ({
         ...prev,
         blockSpotId: spot.BLOCK_SPOT_ID,
         floorId: spot.FLOOR_ID,
-        startTime: getCurrentDateTime(),
-        endTime: getCurrentDateTime(),
+        startTime: currentDateTime,
+        endTime: currentDateTime,
       }));
       setOpenDialog(true);
     }
@@ -223,6 +338,8 @@ const Reservations = () => {
 
   const handleReservationSubmit = async () => {
     try {
+      setError("");
+      
       if (!reservationForm.vehicleId) {
         setError("Please select a vehicle");
         return;
@@ -233,6 +350,14 @@ const Reservations = () => {
         return;
       }
 
+      // Validate reservation times
+      const timeError = validateTimeRange(reservationForm.startTime, reservationForm.endTime);
+      if (timeError) {
+        setError(timeError);
+        return;
+      }
+
+      // Validate token
       const token = localStorage.getItem("token");
       if (!token) {
         setError("Session expired. Please login again.");
@@ -242,11 +367,11 @@ const Reservations = () => {
         return;
       }
 
-      // Prepare the reservation data
+      // Create reservation data with proper time handling
       const reservationData = {
         spotId: selectedSpot.BLOCK_SPOT_ID,
-        startTime: reservationForm.startTime,
-        endTime: reservationForm.endTime,
+        startTime: new Date(reservationForm.startTime).toISOString(),
+        endTime: new Date(reservationForm.endTime).toISOString(),
         vehicleId: reservationForm.vehicleId,
         firstParkingRate: INITIAL_RATE,
         succeedingRate: SUCCEEDING_RATE,
@@ -281,18 +406,16 @@ const Reservations = () => {
         fetchSpots();
         // Show success message
         setError("");
+        // Show success alert
+        alert("Reservation created successfully!");
       }
     } catch (error) {
       console.error("Error creating reservation:", error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-      } else {
-        setError(
-          error.response?.data?.message || "Failed to create reservation"
-        );
-      }
+      setError(
+        error.response?.data?.message || 
+        error.message || 
+        "Failed to create reservation"
+      );
     }
   };
 
@@ -310,294 +433,317 @@ const Reservations = () => {
     setSelectedBlock(newBlockId);
   };
 
-  return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Reservation
-        </Typography>
+  // Add this new function to handle vehicle selection
+  const handleVehicleChange = (e) => {
+    const selectedVehicleId = e.target.value;
+    const selectedVehicle = vehicles.find(v => v.VEHICLE_ID === selectedVehicleId);
+    
+    if (selectedVehicle) {
+      setReservationForm(prev => ({
+        ...prev,
+        vehicleId: selectedVehicleId,
+        vehicleType: selectedVehicle.vehicleType,
+        vehiclePlate: selectedVehicle.plateNumber
+      }));
+    }
+  };
 
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Floor Number</InputLabel>
-              <Select
-                value={selectedFloor}
-                onChange={handleFloorChange}
-                label="Floor Number"
-              >
-                <MenuItem value="">Select Floor</MenuItem>
-                <MenuItem value="1">Floor 1</MenuItem>
-                <MenuItem value="2">Floor 2</MenuItem>
-                <MenuItem value="3">Floor 3</MenuItem>
-              </Select>
-            </FormControl>
+  return (
+    <Container maxWidth="lg">
+      <Box sx={{ py: 4 }}>
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Select Floor</InputLabel>
+                <Select
+                  value={selectedFloor}
+                  onChange={handleFloorChange}
+                  label="Select Floor"
+                >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
+                  <MenuItem value="1">Floor 1</MenuItem>
+                  <MenuItem value="4">Floor 2</MenuItem>
+                  <MenuItem value="3">Floor 3</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Select Block</InputLabel>
+                <Select
+                  value={selectedBlock}
+                  onChange={handleBlockChange}
+                  label="Select Block"
+                  disabled={!selectedFloor}
+                >
+                  <MenuItem value="">
+                    <em>None</em>
+                  </MenuItem>
+                  <MenuItem value="A">Block A</MenuItem>
+                  <MenuItem value="B">Block B</MenuItem>
+                  <MenuItem value="C">Block C</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Block Name</InputLabel>
-              <Select
-                value={selectedBlock}
-                onChange={handleBlockChange}
-                label="Block Name"
-              >
-                <MenuItem value="">Select Block</MenuItem>
-                <MenuItem value="A">Block A</MenuItem>
-                <MenuItem value="B">Block B</MenuItem>
-                <MenuItem value="C">Block C</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={6}>
-            <TextField fullWidth label="Search spot..." variant="outlined" />
-          </Grid>
-        </Grid>
+        </Paper>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
 
         {loading ? (
-          <Box display="flex" justifyContent="center" p={3}>
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
             <CircularProgress />
           </Box>
         ) : (
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Spot Name</TableCell>
-                  <TableCell>Floor</TableCell>
-                  <TableCell>Block</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {spots.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      {selectedFloor && selectedBlock
-                        ? "No spots found for the selected criteria"
-                        : "Please select a floor and block to view available spots"}
-                    </TableCell>
+          <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'background.paper' }}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Spot Name</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Action</TableCell>
                   </TableRow>
-                ) : (
-                  spots.map((spot) => (
-                    <TableRow
-                      key={spot.BLOCK_SPOT_ID}
-                      sx={{
-                        backgroundColor:
-                          spot.STATUS === "Available"
-                            ? "success.light"
-                            : "error.light",
-                        "&:hover": {
-                          backgroundColor:
-                            spot.STATUS === "Available"
-                              ? "success.main"
-                              : "error.main",
-                          cursor:
-                            spot.STATUS === "Available"
-                              ? "pointer"
-                              : "not-allowed",
-                        },
-                      }}
-                      onClick={() =>
-                        spot.STATUS === "Available" && handleSpotClick(spot)
-                      }
-                    >
+                </TableHead>
+                <TableBody>
+                  {spots.map((spot) => (
+                    <TableRow key={spot.BLOCK_SPOT_ID}>
+                      <TableCell>{spot.SPOT_NAME}</TableCell>
                       <TableCell>
-                        <Typography variant="body1" fontWeight="bold">
-                          {spot.SPOT_NAME}
-                        </Typography>
+                        <Chip
+                          label={spot.STATUS}
+                          color={
+                            spot.STATUS === 'Available'
+                              ? 'success'
+                              : spot.STATUS === 'Occupied'
+                              ? 'error'
+                              : spot.STATUS === 'Reserved'
+                              ? 'warning'
+                              : 'default'
+                          }
+                          size="small"
+                        />
                       </TableCell>
-                      <TableCell>{spot.FLOOR_DISPLAY_NAME}</TableCell>
-                      <TableCell>Block {spot.BLOCK_NAME}</TableCell>
                       <TableCell>
-                        <Box
-                          sx={{
-                            display: "inline-block",
-                            px: 2,
-                            py: 0.5,
-                            borderRadius: 1,
-                            backgroundColor:
-                              spot.STATUS === "Available"
-                                ? "success.main"
-                                : "error.main",
-                            color: "white",
-                          }}
-                        >
-                          {spot.STATUS}
-                        </Box>
-                      </TableCell>
-                      <TableCell align="right">
                         <Button
                           variant="contained"
-                          color={
-                            spot.STATUS === "Available" ? "primary" : "error"
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (spot.STATUS === "Available") {
-                              handleSpotClick(spot);
-                            }
-                          }}
-                          disabled={spot.STATUS !== "Available"}
+                          color="primary"
+                          disabled={spot.STATUS !== 'Available'}
+                          onClick={() => handleSpotClick(spot)}
+                          size="small"
                         >
-                          {spot.STATUS === "Available" ? "Reserve" : "Occupied"}
+                          Select
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
         )}
-      </Paper>
 
-      <Dialog
-        open={openDialog}
-        onClose={() => setOpenDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          <Typography variant="h6">Reservation</Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="Floor Number"
-                value={selectedFloor ? `Floor ${selectedFloor}` : ""}
-                disabled
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="Block Name"
-                value={selectedBlock ? `Block ${selectedBlock}` : ""}
-                disabled
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="Spot Name"
-                value={selectedSpot ? `Spot ${selectedSpot.SPOT_NAME}` : ""}
-                disabled
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="Vehicle Plate"
-                value={reservationForm.vehiclePlate}
-                onChange={(e) =>
-                  setReservationForm((prev) => ({
-                    ...prev,
-                    vehiclePlate: e.target.value,
-                  }))
-                }
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Date"
-                value={reservationForm.startTime.split("T")[0]}
-                onChange={(e) => {
-                  const newDate = e.target.value;
-                  const oldTime = reservationForm.startTime.split("T")[1];
-                  setReservationForm((prev) => ({
-                    ...prev,
-                    startTime: `${newDate}T${oldTime}`,
-                  }));
-                }}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                type="time"
-                label="Time in"
-                value={reservationForm.startTime.split("T")[1]}
-                onChange={(e) => {
-                  const date = reservationForm.startTime.split("T")[0];
-                  setReservationForm((prev) => ({
-                    ...prev,
-                    startTime: `${date}T${e.target.value}`,
-                  }));
-                }}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                type="time"
-                label="Time out"
-                value={reservationForm.endTime.split("T")[1]}
-                onChange={(e) => {
-                  const date = reservationForm.endTime.split("T")[0];
-                  setReservationForm((prev) => ({
-                    ...prev,
-                    endTime: `${date}T${e.target.value}`,
-                  }));
-                }}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="Type"
-                value={reservationForm.type}
-                disabled
-              />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField
-                fullWidth
-                label="Duration (hours)"
-                type="number"
-                value={Math.ceil(
-                  (new Date(reservationForm.endTime) -
-                    new Date(reservationForm.startTime)) /
-                    (1000 * 60 * 60)
-                )}
-                disabled
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Partial Payment"
-                type="number"
-                value={parkingFee.totalAmount}
-                disabled
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions sx={{ p: 2, pt: 0 }}>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleReservationSubmit}
-          >
-            Confirm Reservation
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">New Reservation</Typography>
+              <IconButton
+                aria-label="close"
+                onClick={() => setOpenDialog(false)}
+                size="small"
+              >
+                ×
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Floor Number</Typography>
+                  <Typography>{selectedSpot?.FLOOR_NUMBER ? `Floor ${selectedSpot.FLOOR_NUMBER}` : '-'}</Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Block Name</Typography>
+                  <Typography>{`Block ${selectedSpot?.BLOCK_NAME || '-'}`}</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Spot Name</Typography>
+                  <Typography>{selectedSpot?.SPOT_NAME || '-'}</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Vehicle</InputLabel>
+                    <Select
+                      value={reservationForm.vehicleId}
+                      onChange={handleVehicleChange}
+                      label="Vehicle"
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {vehicles.map((vehicle) => (
+                        <MenuItem key={vehicle.VEHICLE_ID} value={vehicle.VEHICLE_ID}>
+                          {vehicle.plateNumber} - {vehicle.vehicleBrand}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Vehicle Type</Typography>
+                  <Typography>{reservationForm.vehicleType || '-'}</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Reservation Date</Typography>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    value={reservationForm.startTime.split('T')[0]}
+                    onChange={(e) => {
+                      const date = e.target.value;
+                      const currentStartTime = reservationForm.startTime.split('T')[1];
+                      const currentEndTime = reservationForm.endTime.split('T')[1];
+                      setReservationForm({
+                        ...reservationForm,
+                        startTime: `${date}T${currentStartTime}`,
+                        endTime: `${date}T${currentEndTime}`,
+                      });
+                    }}
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Time In</Typography>
+                  <TextField
+                    fullWidth
+                    type="time"
+                    value={reservationForm.startTime.split('T')[1]}
+                    onChange={(e) => {
+                      const date = reservationForm.startTime.split('T')[0];
+                      const newStartTime = handleTimeInput(date, e.target.value);
+                      
+                      setReservationForm(prev => {
+                        const newForm = {
+                          ...prev,
+                          startTime: newStartTime
+                        };
+                        
+                        const timeError = validateTimeRange(newStartTime, prev.endTime);
+                        if (timeError) {
+                          setError(timeError);
+                        } else {
+                          setError('');
+                        }
+                        
+                        return newForm;
+                      });
+                    }}
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                    inputProps={{
+                      step: 900 // 15 minutes
+                    }}
+                  />
+                  <Typography variant="caption" color="textSecondary">
+                    {new Date(reservationForm.startTime).toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Time Out</Typography>
+                  <TextField
+                    fullWidth
+                    type="time"
+                    value={reservationForm.endTime.split('T')[1]}
+                    onChange={(e) => {
+                      const date = reservationForm.endTime.split('T')[0];
+                      const newEndTime = handleTimeInput(date, e.target.value);
+                      
+                      setReservationForm(prev => {
+                        const newForm = {
+                          ...prev,
+                          endTime: newEndTime
+                        };
+                        
+                        const timeError = validateTimeRange(prev.startTime, newEndTime);
+                        if (timeError) {
+                          setError(timeError);
+                        } else {
+                          setError('');
+                        }
+                        
+                        return newForm;
+                      });
+                    }}
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                    inputProps={{
+                      step: 900 // 15 minutes
+                    }}
+                  />
+                  <Typography variant="caption" color="textSecondary">
+                    {new Date(reservationForm.endTime).toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Duration</Typography>
+                  <Typography>
+                    {formatDuration(
+                      (new Date(reservationForm.endTime) - new Date(reservationForm.startTime)) /
+                        (1000 * 60 * 60)
+                    )}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Payment Status</Typography>
+                  <Typography>Partial Payment</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Total Amount</Typography>
+                  <Typography variant="h6" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                    ₱{parkingFee.totalAmount}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 3 }}>
+            <Button 
+              onClick={() => setOpenDialog(false)}
+              variant="outlined"
+              color="inherit"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReservationSubmit}
+              variant="contained"
+              color="primary"
+            >
+              Confirm Reservation
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Container>
   );
 };

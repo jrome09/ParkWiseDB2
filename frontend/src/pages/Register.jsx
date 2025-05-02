@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, TextField, Typography, Container, Paper, Grid, Alert, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import '../styles/Register.css';
+// Import your logo - make sure the path is correct
+import parkwiseLogo from '../assets/parkwise-logo.png';
 
 const BACKEND_URL = 'http://localhost:5000'; // Explicitly set backend URL
 
@@ -125,150 +127,126 @@ const Register = () => {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography component="h1" variant="h5" align="center" gutterBottom>
-            Create your Account
-          </Typography>
-          {serverStatus === 'offline' && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              Unable to connect to the server. Please ensure the backend server is running.
-            </Alert>
-          )}
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {success}
-            </Alert>
-          )}
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  name="firstName"
-                  label="First Name"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  error={!formData.firstName && error}
-                  disabled={serverStatus === 'offline'}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  required
-                  fullWidth
-                  name="lastName"
-                  label="Last Name"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  error={!formData.lastName && error}
-                  disabled={serverStatus === 'offline'}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="email"
-                  label="Email Address"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  error={!formData.email && error}
-                  disabled={serverStatus === 'offline'}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="driverLicense"
-                  label="Driver's License"
-                  value={formData.driverLicense}
-                  onChange={handleChange}
-                  error={!formData.driverLicense && error}
-                  disabled={serverStatus === 'offline'}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="birthDate"
-                  label="Birth Date"
-                  type="date"
-                  value={formData.birthDate}
-                  onChange={handleChange}
-                  error={!formData.birthDate && error}
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                  disabled={serverStatus === 'offline'}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="password"
-                  label="Password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  error={!formData.password && error}
-                  helperText="Password must be at least 6 characters long"
-                  disabled={serverStatus === 'offline'}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  required
-                  fullWidth
-                  name="confirmPassword"
-                  label="Confirm Password"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  error={!formData.confirmPassword && error}
-                  disabled={serverStatus === 'offline'}
-                />
-              </Grid>
-            </Grid>
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading || serverStatus === 'offline'}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Sign Up'}
-            </Button>
-            <Button
-              fullWidth
-              variant="text"
-              onClick={() => navigate('/login')}
-              disabled={loading}
-            >
-              Already have an account? Sign In
-            </Button>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+    <div className="register-page">
+      <div className="register-box">
+        <div className="register-header">
+          <img src={parkwiseLogo} alt="Parkwise Logo" />
+        </div>
+
+        {serverStatus === 'offline' && (
+          <div className="error-message">
+            Unable to connect to the server. Please ensure the backend server is running.
+          </div>
+        )}
+        
+        {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>First Name:</label>
+            <input
+              type="text"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              placeholder="Enter your first name"
+              required
+              disabled={serverStatus === 'offline'}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Last Name:</label>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              placeholder="Enter your last name"
+              required
+              disabled={serverStatus === 'offline'}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Email:</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email"
+              required
+              disabled={serverStatus === 'offline'}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Driver's License:</label>
+            <input
+              type="text"
+              name="driverLicense"
+              value={formData.driverLicense}
+              onChange={handleChange}
+              placeholder="Enter your driver's license"
+              required
+              disabled={serverStatus === 'offline'}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Birth Date:</label>
+            <input
+              type="date"
+              name="birthDate"
+              value={formData.birthDate}
+              onChange={handleChange}
+              required
+              disabled={serverStatus === 'offline'}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Password:</label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Enter your password"
+              required
+              disabled={serverStatus === 'offline'}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Confirm Password:</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="Confirm your password"
+              required
+              disabled={serverStatus === 'offline'}
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            className="register-button"
+            disabled={loading || serverStatus === 'offline'}
+          >
+            {loading ? 'Registering...' : 'Register'}
+          </button>
+
+          <div className="login-link">
+            Already have an account? <a href="/login">Log in</a>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 

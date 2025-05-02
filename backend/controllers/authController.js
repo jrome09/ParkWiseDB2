@@ -144,26 +144,48 @@ const login = async (req, res) => {
 
 const getProfile = async (req, res) => {
   try {
+    console.log('getProfile - Fetching profile for user:', {
+      userId: req.user.CUST_ID,
+      email: req.user.email
+    });
+
     const [users] = await pool.query(
       'SELECT CUST_ID, CUST_FNAME, CUST_LNAME, EMAIL, CUST_DRIVER_LICENSE, BIRTH_DATE, CREATED_AT FROM CUSTOMER WHERE CUST_ID = ?',
-      [req.user.userId]
+      [req.user.CUST_ID]
     );
 
+    console.log('getProfile - Database query result:', {
+      found: users.length > 0,
+      userData: users[0] ? {
+        id: users[0].CUST_ID,
+        email: users[0].EMAIL,
+        firstName: users[0].CUST_FNAME,
+        lastName: users[0].CUST_LNAME
+      } : null
+    });
+
     if (users.length === 0) {
+      console.log('getProfile - User not found in database');
       return res.status(404).json({ message: 'User not found' });
     }
 
     const user = users[0];
-    res.json({
+    const profileData = {
       firstName: user.CUST_FNAME,
       lastName: user.CUST_LNAME,
       email: user.EMAIL,
       driverLicense: user.CUST_DRIVER_LICENSE,
       birthDate: user.BIRTH_DATE,
       memberSince: user.CREATED_AT
-    });
+    };
+
+    console.log('getProfile - Sending profile data:', profileData);
+    res.json(profileData);
   } catch (error) {
-    console.error(error);
+    console.error('getProfile error:', {
+      message: error.message,
+      stack: error.stack
+    });
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -1,0 +1,133 @@
+/* frontend/src/styles/Register.css */
+.register-page {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: url('../../image/backgroun-landing.jpg') no-repeat center center;
+    background-size: cover;
+    position: relative;
+}
+
+.register-box {
+    background: #ffffff;
+    padding: 30px 40px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 580px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.register-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.register-header img {
+    width: 150px;
+    height: auto;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #344054;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #D0D5DD;
+    border-radius: 8px;
+    font-size: 14px;
+    background-color: #F9FAFB;
+    transition: all 0.2s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #2E90FA;
+    box-shadow: 0 0 0 4px rgba(46, 144, 250, 0.1);
+}
+
+.register-button {
+    width: 100%;
+    padding: 10px;
+    background-color: #2E90FA;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-bottom: 24px;
+}
+
+.register-button:hover {
+    background-color: #1570CD;
+}
+
+.login-link {
+    text-align: center;
+    color: #344054;
+    font-size: 14px;
+}
+
+.login-link a {
+    color: #2E90FA;
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 4px;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+.error-message {
+    background-color: #fff3f3;
+    color: #dc3545;
+    padding: 0.75rem;
+    border-radius: 5px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    border: 1px solid #ffcdd2;
+}
+
+/* Add custom scrollbar styling */
+.register-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+.register-box::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.register-box::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.register-box::-webkit-scrollbar-thumb:hover {
+    background: #757575;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    .register-box {
+        margin: 16px;
+        padding: 20px;
+        max-height: 85vh;
+    }
+} 

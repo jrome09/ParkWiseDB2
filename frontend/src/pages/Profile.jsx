@@ -18,7 +18,12 @@
     DialogActions,
     TextField,
     Alert,
-    Snackbar
+    Snackbar,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    useTheme,
     } from '@mui/material';
     import {
     Email as EmailIcon,
@@ -26,7 +31,8 @@
     Cake as BirthDateIcon,
     Today as MemberSinceIcon,
     DirectionsCar as CarIcon,
-    Add as AddIcon
+    Add as AddIcon,
+    Edit as EditIcon,
     } from '@mui/icons-material';
     import axios from 'axios';
     import { useNavigate } from 'react-router-dom';
@@ -47,6 +53,8 @@
     });
     const navigate = useNavigate();
 
+    const theme = useTheme();
+
     const handleUnauthorized = () => {
         // Clear all auth data
         localStorage.removeItem('token');
@@ -63,18 +71,34 @@
                 headers: { Authorization: `Bearer ${token}` }
             });
             
-            setVehicles([...vehicles, response.data]);
-            setOpenVehicleDialog(false);
-            setNewVehicle({
-                vehicleType: '',
-                vehicleColor: '',
-                plateNumber: '',
-                vehicleBrand: ''
-            });
+            // Add the new vehicle to the vehicles list
+            if (response.data.vehicle) {
+                setVehicles([response.data.vehicle, ...vehicles]);
+                setOpenVehicleDialog(false);
+                setNewVehicle({
+                    vehicleType: '',
+                    vehicleColor: '',
+                    plateNumber: '',
+                    vehicleBrand: ''
+                });
+                // Show success message
+                setSnackbar({
+                    open: true,
+                    message: 'Vehicle added successfully!',
+                    severity: 'success'
+                });
+            }
         } catch (error) {
             console.error('Error adding vehicle:', error);
             if (error.response?.status === 401) {
                 handleUnauthorized();
+            } else {
+                // Show error message
+                setSnackbar({
+                    open: true,
+                    message: error.response?.data?.message || 'Error adding vehicle',
+                    severity: 'error'
+                });
             }
         }
     };
@@ -114,7 +138,7 @@
                 handleUnauthorized();
                 return;
             }
-            const response = await axios.get('http://localhost:5000/api/vehicles/user', {
+            const response = await axios.get('http://localhost:5000/api/vehicles', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setVehicles(response.data);
@@ -179,7 +203,7 @@
                 alignItems="center" 
                 minHeight="80vh"
             >
-                <CircularProgress size={60} />
+                <CircularProgress size={40} />
                 <Typography variant="body1" sx={{ ml: 2 }}>
                     Loading profile data...
                 </Typography>
@@ -190,21 +214,20 @@
     if (error) {
         return (
             <Container maxWidth="md">
-                <Paper 
+                <Alert 
+                    severity="error" 
                     sx={{ 
-                        p: 3, 
-                        mt: 3, 
-                        bgcolor: '#fff3f3',
-                        border: '1px solid #ffcdd2'
+                        mt: 3,
+                        borderRadius: 2,
                     }}
                 >
-                    <Typography color="error" variant="h6" align="center">
+                    <Typography variant="subtitle1" fontWeight={600}>
                         {error}
                     </Typography>
-                    <Typography variant="body1" align="center" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
                         Please try refreshing the page or contact support if the problem persists.
                     </Typography>
-                </Paper>
+                </Alert>
             </Container>
         );
     }
@@ -212,21 +235,20 @@
     if (!userData) {
         return (
             <Container maxWidth="md">
-                <Paper 
+                <Alert 
+                    severity="error" 
                     sx={{ 
-                        p: 3, 
-                        mt: 3, 
-                        bgcolor: '#fff3f3',
-                        border: '1px solid #ffcdd2'
+                        mt: 3,
+                        borderRadius: 2,
                     }}
                 >
-                    <Typography color="error" variant="h6" align="center">
+                    <Typography variant="subtitle1" fontWeight={600}>
                         No user data available
                     </Typography>
-                    <Typography variant="body1" align="center" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
                         Please try logging in again.
                     </Typography>
-                </Paper>
+                </Alert>
             </Container>
         );
     }
@@ -246,54 +268,68 @@
     };
 
     return (
-        <Container maxWidth="md">
+        <Container maxWidth="lg">
             <Box sx={{ py: 4 }}>
                 {/* Profile Header */}
                 <Paper 
-                    elevation={3} 
+                    elevation={0}
                     sx={{ 
                         p: 4, 
-                        mb: 3, 
-                        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+                        mb: 4, 
+                        borderRadius: 3,
+                        background: `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.primary.main} 100%)`,
+                        color: 'white',
                     }}
                 >
                     <Box display="flex" alignItems="center" mb={3}>
                         <Avatar
                             sx={{
-                                width: 100,
-                                height: 100,
-                                bgcolor: 'primary.main',
+                                width: 120,
+                                height: 120,
+                                bgcolor: 'rgba(255, 255, 255, 0.2)',
                                 fontSize: '2.5rem',
                                 fontWeight: 'bold',
-                                mr: 3,
-                                boxShadow: 3
+                                mr: 4,
+                                border: '4px solid rgba(255, 255, 255, 0.3)',
                             }}
                         >
                             {getInitials()}
                         </Avatar>
                         <Box>
-                            <Typography variant="h4" gutterBottom fontWeight="bold">
+                            <Typography variant="h3" gutterBottom fontWeight="bold" sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                                 {userData.firstName} {userData.lastName}
+                            </Typography>
+                            <Typography variant="h6" sx={{ opacity: 0.9, textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                                Member since {formatDate(userData.memberSince)}
                             </Typography>
                         </Box>
                     </Box>
                 </Paper>
 
                 {/* User Information Cards */}
-                <Grid container spacing={3}>
-                    {/* Email Card */}
+                <Grid container spacing={3} sx={{ mb: 4 }}>
                     <Grid item xs={12} md={6}>
-                        <Card elevation={2}>
+                        <Card elevation={0} sx={{ height: '100%', borderRadius: 3 }}>
                             <CardContent>
                                 <Box display="flex" alignItems="center">
-                                    <IconButton size="large" sx={{ bgcolor: 'primary.light', mr: 2 }}>
+                                    <IconButton 
+                                        size="large" 
+                                        sx={{ 
+                                            bgcolor: `${theme.palette.primary.main}15`,
+                                            color: theme.palette.primary.main,
+                                            mr: 2,
+                                            '&:hover': {
+                                                bgcolor: `${theme.palette.primary.main}25`,
+                                            },
+                                        }}
+                                    >
                                         <EmailIcon />
                                     </IconButton>
                                     <Box>
-                                        <Typography variant="overline" color="textSecondary">
+                                        <Typography variant="overline" color="text.secondary" fontWeight={600}>
                                             Email Address
                                         </Typography>
-                                        <Typography variant="body1">
+                                        <Typography variant="h6">
                                             {userData.email}
                                         </Typography>
                                     </Box>
@@ -302,19 +338,28 @@
                         </Card>
                     </Grid>
 
-                    {/* Driver's License Card */}
                     <Grid item xs={12} md={6}>
-                        <Card elevation={2}>
+                        <Card elevation={0} sx={{ height: '100%', borderRadius: 3 }}>
                             <CardContent>
                                 <Box display="flex" alignItems="center">
-                                    <IconButton size="large" sx={{ bgcolor: 'primary.light', mr: 2 }}>
+                                    <IconButton 
+                                        size="large" 
+                                        sx={{ 
+                                            bgcolor: `${theme.palette.secondary.main}15`,
+                                            color: theme.palette.secondary.main,
+                                            mr: 2,
+                                            '&:hover': {
+                                                bgcolor: `${theme.palette.secondary.main}25`,
+                                            },
+                                        }}
+                                    >
                                         <LicenseIcon />
                                     </IconButton>
                                     <Box>
-                                        <Typography variant="overline" color="textSecondary">
+                                        <Typography variant="overline" color="text.secondary" fontWeight={600}>
                                             Driver's License
                                         </Typography>
-                                        <Typography variant="body1">
+                                        <Typography variant="h6">
                                             {userData.driverLicense || 'Not provided'}
                                         </Typography>
                                     </Box>
@@ -323,19 +368,28 @@
                         </Card>
                     </Grid>
 
-                    {/* Birth Date Card */}
                     <Grid item xs={12} md={6}>
-                        <Card elevation={2}>
+                        <Card elevation={0} sx={{ height: '100%', borderRadius: 3 }}>
                             <CardContent>
                                 <Box display="flex" alignItems="center">
-                                    <IconButton size="large" sx={{ bgcolor: 'primary.light', mr: 2 }}>
+                                    <IconButton 
+                                        size="large" 
+                                        sx={{ 
+                                            bgcolor: `${theme.palette.success.main}15`,
+                                            color: theme.palette.success.main,
+                                            mr: 2,
+                                            '&:hover': {
+                                                bgcolor: `${theme.palette.success.main}25`,
+                                            },
+                                        }}
+                                    >
                                         <BirthDateIcon />
                                     </IconButton>
                                     <Box>
-                                        <Typography variant="overline" color="textSecondary">
+                                        <Typography variant="overline" color="text.secondary" fontWeight={600}>
                                             Birth Date
                                         </Typography>
-                                        <Typography variant="body1">
+                                        <Typography variant="h6">
                                             {formatDate(userData.birthDate)}
                                         </Typography>
                                     </Box>
@@ -344,19 +398,28 @@
                         </Card>
                     </Grid>
 
-                    {/* Member Since Card */}
                     <Grid item xs={12} md={6}>
-                        <Card elevation={2}>
+                        <Card elevation={0} sx={{ height: '100%', borderRadius: 3 }}>
                             <CardContent>
                                 <Box display="flex" alignItems="center">
-                                    <IconButton size="large" sx={{ bgcolor: 'primary.light', mr: 2 }}>
+                                    <IconButton 
+                                        size="large" 
+                                        sx={{ 
+                                            bgcolor: `${theme.palette.info.main}15`,
+                                            color: theme.palette.info.main,
+                                            mr: 2,
+                                            '&:hover': {
+                                                bgcolor: `${theme.palette.info.main}25`,
+                                            },
+                                        }}
+                                    >
                                         <MemberSinceIcon />
                                     </IconButton>
                                     <Box>
-                                        <Typography variant="overline" color="textSecondary">
+                                        <Typography variant="overline" color="text.secondary" fontWeight={600}>
                                             Member Since
                                         </Typography>
-                                        <Typography variant="body1">
+                                        <Typography variant="h6">
                                             {formatDate(userData.memberSince)}
                                         </Typography>
                                     </Box>
@@ -367,15 +430,16 @@
                 </Grid>
 
                 {/* Vehicles Section */}
-                <Box sx={{ mt: 4 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                        <Typography variant="h5" component="h2">
-                            Vehicles
+                <Box sx={{ mb: 4 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography variant="h5" fontWeight={600}>
+                            My Vehicles
                         </Typography>
                         <Button
                             variant="contained"
                             startIcon={<AddIcon />}
                             onClick={() => setOpenVehicleDialog(true)}
+                            sx={{ borderRadius: 2 }}
                         >
                             Add Vehicle
                         </Button>
@@ -384,26 +448,57 @@
                     <Grid container spacing={3}>
                         {vehicles.map((vehicle, index) => (
                             <Grid item xs={12} md={6} key={index}>
-                                <Card elevation={2}>
+                                <Card 
+                                    elevation={0} 
+                                    sx={{ 
+                                        borderRadius: 3,
+                                        position: 'relative',
+                                        overflow: 'visible',
+                                        '&:hover': {
+                                            '& .edit-button': {
+                                                opacity: 1,
+                                            },
+                                        },
+                                    }}
+                                >
                                     <CardContent>
                                         <Box display="flex" alignItems="center">
-                                            <IconButton size="large" sx={{ bgcolor: 'primary.light', mr: 2 }}>
+                                            <IconButton 
+                                                size="large" 
+                                                sx={{ 
+                                                    bgcolor: `${theme.palette.primary.main}15`,
+                                                    color: theme.palette.primary.main,
+                                                    mr: 2,
+                                                }}
+                                            >
                                                 <CarIcon />
                                             </IconButton>
                                             <Box>
                                                 <Typography variant="h6" gutterBottom>
                                                     {vehicle.vehicleBrand}
                                                 </Typography>
-                                                <Typography variant="body2" color="textSecondary">
+                                                <Typography variant="body2" color="text.secondary">
                                                     Type: {vehicle.vehicleType}
                                                 </Typography>
-                                                <Typography variant="body2" color="textSecondary">
+                                                <Typography variant="body2" color="text.secondary">
                                                     Color: {vehicle.vehicleColor}
                                                 </Typography>
-                                                <Typography variant="body2" color="textSecondary">
+                                                <Typography variant="body2" color="text.secondary">
                                                     Plate: {vehicle.plateNumber}
                                                 </Typography>
                                             </Box>
+                                            <IconButton
+                                                className="edit-button"
+                                                sx={{
+                                                    position: 'absolute',
+                                                    top: 8,
+                                                    right: 8,
+                                                    opacity: 0,
+                                                    transition: 'opacity 0.2s',
+                                                }}
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
                                         </Box>
                                     </CardContent>
                                 </Card>
@@ -413,49 +508,84 @@
                 </Box>
 
                 {/* Add Vehicle Dialog */}
-                <Dialog open={openVehicleDialog} onClose={() => setOpenVehicleDialog(false)}>
+                <Dialog 
+                    open={openVehicleDialog} 
+                    onClose={() => setOpenVehicleDialog(false)}
+                    maxWidth="sm"
+                    fullWidth
+                    PaperProps={{
+                        sx: {
+                            borderRadius: 3,
+                        },
+                    }}
+                >
                     <DialogTitle>Add New Vehicle</DialogTitle>
                     <DialogContent>
-                        <Box sx={{ pt: 2 }}>
-                            <TextField
-                                fullWidth
-                                label="Vehicle Type"
-                                value={newVehicle.vehicleType}
-                                onChange={(e) => setNewVehicle({ ...newVehicle, vehicleType: e.target.value })}
-                                margin="normal"
-                            />
-                            <TextField
-                                fullWidth
-                                label="Vehicle Color"
-                                value={newVehicle.vehicleColor}
-                                onChange={(e) => setNewVehicle({ ...newVehicle, vehicleColor: e.target.value })}
-                                margin="normal"
-                            />
-                            <TextField
-                                fullWidth
-                                label="Plate Number"
-                                value={newVehicle.plateNumber}
-                                onChange={(e) => setNewVehicle({ ...newVehicle, plateNumber: e.target.value })}
-                                margin="normal"
-                            />
-                            <TextField
-                                fullWidth
-                                label="Vehicle Brand"
-                                value={newVehicle.vehicleBrand}
-                                onChange={(e) => setNewVehicle({ ...newVehicle, vehicleBrand: e.target.value })}
-                                margin="normal"
-                            />
-                        </Box>
+                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    label="Vehicle Brand"
+                                    name="vehicleBrand"
+                                    value={newVehicle.vehicleBrand}
+                                    onChange={(e) => setNewVehicle({ ...newVehicle, vehicleBrand: e.target.value })}
+                                    error={Boolean(vehicleErrors.vehicleBrand)}
+                                    helperText={vehicleErrors.vehicleBrand}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Vehicle Type</InputLabel>
+                                    <Select
+                                        name="vehicleType"
+                                        value={newVehicle.vehicleType}
+                                        onChange={(e) => setNewVehicle({ ...newVehicle, vehicleType: e.target.value })}
+                                        error={Boolean(vehicleErrors.vehicleType)}
+                                    >
+                                        <MenuItem value="Sedan">Sedan</MenuItem>
+                                        <MenuItem value="SUV">SUV</MenuItem>
+                                        <MenuItem value="Van">Van</MenuItem>
+                                        <MenuItem value="Truck">Truck</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    label="Vehicle Color"
+                                    name="vehicleColor"
+                                    value={newVehicle.vehicleColor}
+                                    onChange={(e) => setNewVehicle({ ...newVehicle, vehicleColor: e.target.value })}
+                                    error={Boolean(vehicleErrors.vehicleColor)}
+                                    helperText={vehicleErrors.vehicleColor}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    label="Plate Number"
+                                    name="plateNumber"
+                                    value={newVehicle.plateNumber}
+                                    onChange={(e) => setNewVehicle({ ...newVehicle, plateNumber: e.target.value })}
+                                    error={Boolean(vehicleErrors.plateNumber)}
+                                    helperText={vehicleErrors.plateNumber}
+                                />
+                            </Grid>
+                        </Grid>
                     </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setOpenVehicleDialog(false)}>Cancel</Button>
-                        <Button onClick={handleAddVehicle} variant="contained" color="primary">
+                    <DialogActions sx={{ p: 3 }}>
+                        <Button onClick={() => setOpenVehicleDialog(false)}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="contained" 
+                            onClick={handleAddVehicle}
+                        >
                             Add Vehicle
                         </Button>
                     </DialogActions>
                 </Dialog>
 
-                {/* Snackbar for notifications */}
                 <Snackbar
                     open={snackbar.open}
                     autoHideDuration={6000}

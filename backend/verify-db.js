@@ -22,8 +22,83 @@ async function verifyDatabase() {
       WHERE table_schema = ?
     `, [process.env.DB_NAME || 'parkwise2']);
 
-    const tableNames = tables.map(t => t.TABLE_NAME.toUpperCase());
+    const tableNames = tables.map(t => t.table_name ? t.table_name.toUpperCase() : '');
     console.log('Existing tables:', tableNames);
+
+    // Create CUSTOMER table if it doesn't exist
+    if (!tableNames.includes('CUSTOMER')) {
+      console.log('Creating CUSTOMER table...');
+      await connection.execute(`
+        CREATE TABLE IF NOT EXISTS CUSTOMER (
+          CUST_ID INT PRIMARY KEY AUTO_INCREMENT,
+          CUST_FNAME VARCHAR(50) NOT NULL,
+          CUST_LNAME VARCHAR(50) NOT NULL,
+          EMAIL VARCHAR(100) NOT NULL UNIQUE,
+          PASSWORD VARCHAR(255) NOT NULL,
+          CUST_DRIVER_LICENSE VARCHAR(50),
+          BIRTH_DATE DATE,
+          CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    }
+
+    // Drop tables in correct order to handle foreign key constraints
+    console.log('Dropping tables in correct order...');
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
+    
+    // Drop and recreate VEHICLE_TYPES table
+    console.log('Creating VEHICLE_TYPES table...');
+    await connection.execute('DROP TABLE IF EXISTS VEHICLE_TYPES');
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS VEHICLE_TYPES (
+        TYPE_ID INT PRIMARY KEY AUTO_INCREMENT,
+        TYPE_NAME VARCHAR(50) NOT NULL,
+        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_type_name (TYPE_NAME)
+      )
+    `);
+
+    // Insert default vehicle types
+    console.log('Inserting default vehicle types...');
+    const defaultTypes = ['CAR', 'MOTORCYCLE', 'BIKE', 'VAN', 'TRUCK'];
+    for (const type of defaultTypes) {
+      await connection.execute(
+        'INSERT IGNORE INTO VEHICLE_TYPES (TYPE_NAME) VALUES (?)',
+        [type]
+      );
+    }
+
+    // Drop and recreate VEHICLE table
+    console.log('Creating VEHICLE table...');
+    await connection.execute('DROP TABLE IF EXISTS VEHICLE');
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS VEHICLE (
+        VEHICLE_ID INT PRIMARY KEY AUTO_INCREMENT,
+        VEHICLE_TYPE VARCHAR(20) NOT NULL,
+        VEHICLE_COLOR VARCHAR(20),
+        VEHICLE_PLATE VARCHAR(20) NOT NULL,
+        VEHICLE_BRAND VARCHAR(20),
+        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_plate (VEHICLE_PLATE)
+      )
+    `);
+
+    // Drop and recreate CUST_VEHICLE table
+    console.log('Creating CUST_VEHICLE table...');
+    await connection.execute('DROP TABLE IF EXISTS CUST_VEHICLE');
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS CUST_VEHICLE (
+        CUST_VEHICLE_ID INT PRIMARY KEY AUTO_INCREMENT,
+        USER_ID INT NOT NULL,
+        VEHICLE_ID INT NOT NULL,
+        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (USER_ID) REFERENCES CUSTOMER(CUST_ID),
+        FOREIGN KEY (VEHICLE_ID) REFERENCES VEHICLE(VEHICLE_ID),
+        UNIQUE KEY unique_user_vehicle (USER_ID, VEHICLE_ID)
+      )
+    `);
+
+    await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
 
     // Create tables if they don't exist
     if (!tableNames.includes('FLOOR_LEVEL')) {
@@ -66,16 +141,41 @@ async function verifyDatabase() {
       `);
     }
 
+    if (!tableNames.includes('PAYMENT')) {
+      console.log('Creating PAYMENT table...');
+      await connection.execute(`
+        CREATE TABLE IF NOT EXISTS PAYMENT (
+          PAYMENT_ID INT PRIMARY KEY AUTO_INCREMENT,
+          PAYMENT_DATE TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PAYMENT_AMOUNT DECIMAL(10,2) NOT NULL,
+          PAYMENT_STATUS VARCHAR(20) DEFAULT 'Pending',
+          PAYMENT_METHOD VARCHAR(50),
+          CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    }
+
     if (!tableNames.includes('RESERVATION')) {
       console.log('Creating RESERVATION table...');
       await connection.execute(`
         CREATE TABLE IF NOT EXISTS RESERVATION (
           RESERVATION_ID INT PRIMARY KEY AUTO_INCREMENT,
           BLOCK_SPOT_ID INT NOT NULL,
+          VEHICLE_ID INT NOT NULL,
+          CUST_ID INT NOT NULL,
           STATUS VARCHAR(20) DEFAULT 'Active',
           RESERVATION_TIME_START DATETIME NOT NULL,
           RESERVATION_TIME_END DATETIME NOT NULL,
-          FOREIGN KEY (BLOCK_SPOT_ID) REFERENCES BLOCK_SPOT(BLOCK_SPOT_ID)
+          TOTAL_AMOUNT DECIMAL(10,2),
+          TOTAL_DURATION TIME,
+          FIRST_PARKING_RATE DECIMAL(10,2),
+          SUCCEEDING_RATE DECIMAL(10,2),
+          FLOOR_ID INT,
+          CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (BLOCK_SPOT_ID) REFERENCES BLOCK_SPOT(BLOCK_SPOT_ID),
+          FOREIGN KEY (VEHICLE_ID) REFERENCES VEHICLE(VEHICLE_ID),
+          FOREIGN KEY (CUST_ID) REFERENCES CUSTOMER(CUST_ID),
+          FOREIGN KEY (FLOOR_ID) REFERENCES FLOOR_LEVEL(FLOOR_ID)
         )
       `);
     }

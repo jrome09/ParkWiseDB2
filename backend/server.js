@@ -4,9 +4,18 @@ require('dotenv').config();
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Detailed CORS configuration
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:5000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json());
+
+// Add OPTIONS handling for preflight requests
+app.options('*', cors());
 
 // Test route
 app.get('/test', (req, res) => {
@@ -19,8 +28,16 @@ const vehicleRoutes = require('./routes/vehicles');
 const parkingRoutes = require('./routes/parking');
 const { setupParkingSystem } = require('./controllers/parkingController');
 
-// Routes
-app.use('/api/auth', authRoutes);
+// Routes with error handling
+app.use('/api/auth', (req, res, next) => {
+  console.log('Auth route accessed:', {
+    method: req.method,
+    path: req.path,
+    headers: req.headers
+  });
+  authRoutes(req, res, next);
+});
+
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/parking', parkingRoutes);
 
@@ -37,14 +54,19 @@ try {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Global error:', err);
+  console.error('Global error:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
   res.status(500).json({ 
     message: 'Something went wrong!', 
     error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error' 
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;  // Explicitly set port to 5000
 
 // Start server
 const startServer = async () => {
